@@ -13,7 +13,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.os.Handler;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -24,12 +23,11 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
-import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.customview.widget.ViewDragHelper;
 
 public class SwipeBackLayout extends FrameLayout {
+    private final Paint paintShadow;
+    private final Path pathClip;
     private View contentView;
     private float edgeVSize = -1;
     private float edgeHSize = -1;
@@ -72,6 +70,12 @@ public class SwipeBackLayout extends FrameLayout {
         this.callback = callback;
         radiusDrag = callback.getRadiusDrag(getContext());
         radiusShadow = callback.getRadiusShadow(getContext());
+
+        rectFEdge=new RectF();
+        paintShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paintShadow.setColor(Color.BLACK);
+        paintShadow.setMaskFilter(new BlurMaskFilter(radiusShadow, BlurMaskFilter.Blur.NORMAL));
+        pathClip = new Path();
 
         final ViewConfiguration viewConfiguration = ViewConfiguration.get(getContext());
         maxVelocity = viewConfiguration.getScaledMaximumFlingVelocity();
@@ -157,7 +161,10 @@ public class SwipeBackLayout extends FrameLayout {
         super.onSizeChanged(w, h, oldw, oldh);
         if (edgeHSize < 0) edgeHSize = w * callback.getEdgeHSizeRatio();
         if (edgeVSize < 0) edgeVSize = h * callback.getEdgeVSizeRatio();
-        rectFEdge = new RectF(edgeHSize, edgeVSize, getWidth() - edgeHSize, getHeight() - edgeVSize);
+        rectFEdge.left=edgeHSize;
+        rectFEdge.top=edgeVSize;
+        rectFEdge.right= getWidth() - edgeHSize;
+        rectFEdge.bottom=getHeight() - edgeVSize;
     }
 
     @Override
@@ -173,19 +180,11 @@ public class SwipeBackLayout extends FrameLayout {
             canvas.scale(zoom, zoom, getWidth() * 1f / 2 + translate_x, getHeight() * 1f / 2 + translate_y);
             //必须先scale后translate，否则会往相反方向translate
             canvas.translate(translate_x, translate_y);
+            canvas.drawRoundRect(0, 0, getWidth(), getHeight(), radiusDrag, radiusDrag, paintShadow);
 
-            Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            shadowPaint.setColor(Color.BLACK);
-            shadowPaint.setMaskFilter(new BlurMaskFilter(radiusShadow, BlurMaskFilter.Blur.NORMAL));
-
-            RectF rect = new RectF(0, 0, getWidth(), getHeight());
-            canvas.drawRoundRect(rect, radiusDrag, radiusDrag, shadowPaint);
-
-            Path clipPath = new Path();
-            RectF rectF = new RectF(0, 0, getWidth(), getHeight());
-            clipPath.reset();
-            clipPath.addRoundRect(rectF, radiusDrag, radiusDrag, Path.Direction.CW);
-            canvas.clipPath(clipPath); // 裁剪子View绘制区域
+            pathClip.reset();
+            pathClip.addRoundRect(0, 0, getWidth(), getHeight(), radiusDrag, radiusDrag, Path.Direction.CW);
+            canvas.clipPath(pathClip); // 裁剪子View绘制区域
         }
         super.dispatchDraw(canvas);
     }
