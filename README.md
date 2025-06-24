@@ -1,7 +1,7 @@
 Android自定义控件之仿微信滑动返回
 上下左右，双指缩放
 
-![请添加图片描述](https://i-blog.csdnimg.cn/direct/0d1d7bdd8c7147baad2a4a9cef7e45d6.gif#pic_center =200x)
+![请添加图片描述](https://i-blog.csdnimg.cn/direct/0d1d7bdd8c7147baad2a4a9cef7e45d6.gif)
 
 
 
