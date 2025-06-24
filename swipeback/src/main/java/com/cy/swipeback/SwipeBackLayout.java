@@ -427,11 +427,11 @@ public class SwipeBackLayout extends FrameLayout {
         }
 
         public float getRadiusDrag(Context context) {
-            return com.cy.router.utils.ScreenUtils.dpAdapt(context, 30);
+            return ScreenUtils.dpAdapt(context, 30);
         }
 
         public float getRadiusShadow(Context context) {
-            return com.cy.router.utils.ScreenUtils.dpAdapt(context, 10);
+            return ScreenUtils.dpAdapt(context, 10);
         }
 
         public void onEdgeTouched(int edgeTracking) {
