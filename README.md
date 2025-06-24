@@ -13,7 +13,7 @@ Android自定义控件之仿微信滑动返回
 ```
 
 ```c
-implementation 'com.github.AnJiaoDe:SwipeBackNiubility:V0.0.1'
+implementation 'com.github.AnJiaoDe:SwipeBackNiubility:V0.0.2'
 ```
 在你APP的BaseActivity 里添加如下代码
 ```c
