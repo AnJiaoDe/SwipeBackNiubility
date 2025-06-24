@@ -417,8 +417,9 @@ public class SwipeBackLayout extends FrameLayout {
     }
 
     public static abstract class Callback {
+        //由于状态栏和导航栏，故而垂直方向有效触摸范围要设大点
         public float getEdgeVSizeRatio() {
-            return 0.1f;
+            return 0.15f;
         }
 
         public float getEdgeHSizeRatio() {
