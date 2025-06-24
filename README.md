@@ -1,1 +1,1 @@
-![效果]([images/logo.png](https://github.com/AnJiaoDe/SwipeBackNiubility/blob/master/gif/SVID_20250624_222950_1%2000_00_00-00_00_30.gif))
+![效果](https://github.com/AnJiaoDe/SwipeBackNiubility/blob/master/gif/lv_0_20250624223223.gif)
