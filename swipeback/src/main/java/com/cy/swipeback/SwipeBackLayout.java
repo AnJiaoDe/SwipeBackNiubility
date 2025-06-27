@@ -13,6 +13,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -63,6 +64,8 @@ public class SwipeBackLayout extends FrameLayout {
     private Callback callback;
     private float radiusDrag;
     private float radiusShadow;
+    private float touchSlop;
+    private boolean checkTouchSloped = false;
 
     public SwipeBackLayout(@NonNull final Activity activity, @NonNull final Callback callback) {
         super(activity);
@@ -71,17 +74,17 @@ public class SwipeBackLayout extends FrameLayout {
         radiusDrag = callback.getRadiusDrag(getContext());
         radiusShadow = callback.getRadiusShadow(getContext());
 
-        rectFEdge=new RectF();
+        rectFEdge = new RectF();
         paintShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paintShadow.setColor(Color.BLACK);
-        paintShadow.setMaskFilter(new BlurMaskFilter(radiusShadow, BlurMaskFilter.Blur.NORMAL));
+        paintShadow.setColor(callback.getShadowColor());
+        paintShadow.setMaskFilter(new BlurMaskFilter(radiusShadow, callback.getShadowBlur()));
         pathClip = new Path();
 
         final ViewConfiguration viewConfiguration = ViewConfiguration.get(getContext());
         maxVelocity = viewConfiguration.getScaledMaximumFlingVelocity();
         minVelocity = viewConfiguration.getScaledMinimumFlingVelocity();
         velocityThreshold = minVelocity + (maxVelocity - minVelocity) * 0.3f;
-//        touchSlop = viewConfiguration.getScaledTouchSlop();
+        touchSlop = viewConfiguration.getScaledTouchSlop();
         gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             /**
              * 计算两个 MotionEvent 之间的距离（基于 pointer index 0）
@@ -103,13 +106,16 @@ public class SwipeBackLayout extends FrameLayout {
                 if (y > getBottom() - edgeVSize) result |= EDGE_BOTTOM;
                 return result;
             }
-
+            private boolean checkTouchSlop(float dx, float dy) {
+                return dx * dx + dy * dy > touchSlop * touchSlop;
+            }
             //注意：多指触摸缩放的时候，这里也会回调,e1是down ,e2是move
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                 if (rectFEdge.contains(e1.getX(), e1.getY()))
                     return false;
 
+                checkTouchSloped = checkTouchSlop(distanceX, distanceY);
 //                if (distanceX < 0 && !canScrollHorizontal(SwipeBackLayout.this, false, 1, e1.getX(), e1.getY())
 //                        || distanceX > 0 && !canScrollHorizontal(SwipeBackLayout.this, false, -1, e1.getX(), e1.getY())) {
                 translate_x = Math.max(-getWidth(), Math.min(getWidth(), translate_x - distanceX));
@@ -122,7 +128,8 @@ public class SwipeBackLayout extends FrameLayout {
 //                } else {
 //                    return false;
 //                }
-                if (dragState == STATE_IDLE && convertActivityToTranslucented && (Math.abs(translate_x) > edgeHSize || Math.abs(translate_y) > edgeVSize)) {
+                if (dragState == STATE_IDLE && convertActivityToTranslucented && (Math.abs(translate_x) > callback.getThresholdHRatio()*getWidth()
+                        || Math.abs(translate_y) > callback.getThresholdVRatio()*getHeight())) {
                     dragState = STATE_DRAGGING;
                     edgeTracking = getEdgesTouched(e1.getX(), e1.getY());
                     callback.onEdgeTouched(edgeTracking);
@@ -154,17 +161,31 @@ public class SwipeBackLayout extends FrameLayout {
                 return true;
             }
         });
+
+        TypedArray a = activity.getTheme().obtainStyledAttributes(new int[]{
+                android.R.attr.windowBackground
+        });
+        int background = a.getResourceId(0, 0);
+        a.recycle();
+        ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
+        View decorChild = decor.getChildAt(0);
+        decorChild.setBackgroundResource(background);
+        decor.removeView(decorChild);
+        addView(decorChild, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        contentView = decorChild;
+        decor.addView(this, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        if (edgeHSize < 0) edgeHSize = w * callback.getEdgeHSizeRatio();
-        if (edgeVSize < 0) edgeVSize = h * callback.getEdgeVSizeRatio();
-        rectFEdge.left=edgeHSize;
-        rectFEdge.top=edgeVSize;
-        rectFEdge.right= getWidth() - edgeHSize;
-        rectFEdge.bottom=getHeight() - edgeVSize;
+        //必须限制在0.5以内，否则GG，因为left比right还大了，你说寄不寄
+        if (edgeHSize < 0) edgeHSize = w * Math.max(0,Math.min(0.4f, callback.getEdgeSizeHRatio()));
+        if (edgeVSize < 0) edgeVSize = h * Math.max(0,Math.min(0.4f, callback.getEdgeSizeVRatio()));
+        rectFEdge.left = edgeHSize;
+        rectFEdge.top = edgeVSize;
+        rectFEdge.right = getWidth() - edgeHSize;
+        rectFEdge.bottom = getHeight() - edgeVSize;
     }
 
     @Override
@@ -191,6 +212,7 @@ public class SwipeBackLayout extends FrameLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        Log.e("dispatchTouchEvent",activity.getClass().getName());
         if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
         }
@@ -201,8 +223,8 @@ public class SwipeBackLayout extends FrameLayout {
                 translate_y = 0;
                 dragState = STATE_IDLE;
                 onScaling = false;
-                //这个不能少，否则GG
-                convertActivityToTranslucented = com.cy.router.swipeview.TransparentUtils.convertActivityToTranslucent(activity);
+                //这个必须写在这里，否则GG，出现黑闪
+                convertActivityToTranslucented = TransparentUtils.convertActivityToTranslucent(activity);
                 break;
             case MotionEvent.ACTION_POINTER_DOWN:
                 break;
@@ -312,14 +334,14 @@ public class SwipeBackLayout extends FrameLayout {
             case MotionEvent.ACTION_MOVE:
                 //必须放MOVE中，因为onInterceptTouchEvent和onTouchEvent都写了scaleGestureDetector,否则容易单指移动出现scale情况
                 scaleGestureDetector.onTouchEvent(event);
+                //必须做拦截，否则GG
+                if (checkTouchSloped) return true;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
             case MotionEvent.ACTION_CANCEL:
                 break;
         }
-        //必须做拦截，否则GG
-        if (translate_x != 0 || translate_y != 0) return true;
         return super.onInterceptTouchEvent(event);
     }
 
@@ -341,27 +363,12 @@ public class SwipeBackLayout extends FrameLayout {
         return true;
     }
 
-    public void attachActivity(Activity activity) {
-        TypedArray a = activity.getTheme().obtainStyledAttributes(new int[]{
-                android.R.attr.windowBackground
-        });
-        int background = a.getResourceId(0, 0);
-        a.recycle();
-        ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-        View decorChild = decor.getChildAt(0);
-        decorChild.setBackgroundResource(background);
-        decor.removeView(decorChild);
-        addView(decorChild, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        contentView = decorChild;
-        decor.addView(this, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-    }
 
     /**
      * 一旦被触摸，当前activity退出的动画就会被改变（因为设置了透明），可能会变成上下动画，贼丑，
      * 故而必须在BaseActivity中调用此函数，设置为左右动画
-     * @param activity
      */
-    public void overrideFinishPendingTransition(Activity activity) {
+    public void overrideFinishPendingTransition() {
         activity.overridePendingTransition(R.anim.slide_in_from_left, R.anim.slide_out_to_right);
     }
 
@@ -418,12 +425,35 @@ public class SwipeBackLayout extends FrameLayout {
 
     public static abstract class Callback {
         //由于状态栏和导航栏，故而垂直方向有效触摸范围要设大点
-        public float getEdgeVSizeRatio() {
-            return 0.15f;
+        /**
+         *
+         * @return [0,0.4]
+         */
+        public float getEdgeSizeVRatio() {
+            return 0.1f;
         }
 
-        public float getEdgeHSizeRatio() {
-            return 0.1f;
+        /**
+         *
+         * @return [0,0.4]
+         */
+        public float getEdgeSizeHRatio() {
+            return 0.08f;
+        }
+        /**
+         *
+         * @return [0,0.4]
+         */
+        public float getThresholdVRatio() {
+            return 0.2f;
+        }
+
+        /**
+         *
+         * @return [0,0.4]
+         */
+        public float getThresholdHRatio() {
+            return 0.2f;
         }
 
         public float getRadiusDrag(Context context) {
@@ -432,6 +462,12 @@ public class SwipeBackLayout extends FrameLayout {
 
         public float getRadiusShadow(Context context) {
             return ScreenUtils.dpAdapt(context, 10);
+        }
+        public int getShadowColor(){
+            return Color.BLACK;
+        }
+        public BlurMaskFilter.Blur getShadowBlur(){
+            return BlurMaskFilter.Blur.NORMAL;
         }
 
         public void onEdgeTouched(int edgeTracking) {

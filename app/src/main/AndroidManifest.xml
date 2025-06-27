@@ -9,7 +9,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.cy.swipe.SwipeBackActivity"
+            android:name=".SwipeBack2Activity"
+            android:exported="false" />
+        <activity
+            android:name=".SwipeBackActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
