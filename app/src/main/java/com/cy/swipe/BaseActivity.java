@@ -19,7 +19,7 @@ import com.cy.swipeback.VibratorUtils;
  */
 
 public abstract class BaseActivity extends AppCompatActivity {
-    private SwipeBackLayout swipeBackLayout;
+    protected SwipeBackLayout swipeBackLayout;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
