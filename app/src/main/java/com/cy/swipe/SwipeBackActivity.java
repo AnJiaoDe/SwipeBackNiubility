@@ -6,7 +6,7 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-public class SwipeBackActivity extends AppCompatActivity {
+public class SwipeBackActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -15,7 +15,7 @@ public class SwipeBackActivity extends AppCompatActivity {
         findViewById(R.id.btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(SwipeBackActivity.this, SwipeBack2Activity.class));
+                startActivity(new Intent(SwipeBackActivity.this, SwipeBackActivity.class));
             }
         });
     }

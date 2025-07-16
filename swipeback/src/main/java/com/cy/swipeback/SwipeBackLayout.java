@@ -32,7 +32,10 @@ public class SwipeBackLayout extends FrameLayout {
     private View contentView;
     private float edgeVSize = -1;
     private float edgeHSize = -1;
-    private RectF rectFEdge;
+    private RectF rectFEdgeLeft;
+    private RectF rectFEdgeTop;
+    private RectF rectFEdgeRight;
+    private RectF rectFEdgeBottom;
     private float zoom = 1; // 缩放
     private float zoom_max = 10; // 缩放
     private float zoom_min = 0.1f; // 缩放
@@ -74,7 +77,10 @@ public class SwipeBackLayout extends FrameLayout {
         radiusDrag = callback.getRadiusDrag(getContext());
         radiusShadow = callback.getRadiusShadow(getContext());
 
-        rectFEdge = new RectF();
+        rectFEdgeLeft = new RectF();
+        rectFEdgeTop = new RectF();
+        rectFEdgeRight = new RectF();
+        rectFEdgeBottom = new RectF();
         paintShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintShadow.setColor(callback.getShadowColor());
         paintShadow.setMaskFilter(new BlurMaskFilter(radiusShadow, callback.getShadowBlur()));
@@ -106,13 +112,20 @@ public class SwipeBackLayout extends FrameLayout {
                 if (y > getBottom() - edgeVSize) result |= EDGE_BOTTOM;
                 return result;
             }
+
             private boolean checkTouchSlop(float dx, float dy) {
                 return dx * dx + dy * dy > touchSlop * touchSlop;
             }
+
             //注意：多指触摸缩放的时候，这里也会回调,e1是down ,e2是move
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                if (rectFEdge.contains(e1.getX(), e1.getY()))
+                if (Math.abs(distanceX) > Math.abs(distanceY)
+                        && !rectFEdgeLeft.contains(e1.getX(), e1.getY())
+                        && !rectFEdgeRight.contains(e1.getX(), e1.getY())
+                        || Math.abs(distanceX) <= Math.abs(distanceY)
+                        && !rectFEdgeTop.contains(e1.getX(), e1.getY())
+                        && !rectFEdgeBottom.contains(e1.getX(), e1.getY()))
                     return false;
 
                 checkTouchSloped = checkTouchSlop(distanceX, distanceY);
@@ -128,8 +141,8 @@ public class SwipeBackLayout extends FrameLayout {
 //                } else {
 //                    return false;
 //                }
-                if (dragState == STATE_IDLE && convertActivityToTranslucented && (Math.abs(translate_x) > callback.getThresholdHRatio()*getWidth()
-                        || Math.abs(translate_y) > callback.getThresholdVRatio()*getHeight())) {
+                if (dragState == STATE_IDLE && convertActivityToTranslucented && (Math.abs(translate_x) > callback.getThresholdHRatio() * getWidth()
+                        || Math.abs(translate_y) > callback.getThresholdVRatio() * getHeight())) {
                     dragState = STATE_DRAGGING;
                     edgeTracking = getEdgesTouched(e1.getX(), e1.getY());
                     callback.onEdgeTouched(edgeTracking);
@@ -180,12 +193,30 @@ public class SwipeBackLayout extends FrameLayout {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         //必须限制在0.5以内，否则GG，因为left比right还大了，你说寄不寄
-        if (edgeHSize < 0) edgeHSize = w * Math.max(0,Math.min(0.4f, callback.getEdgeSizeHRatio()));
-        if (edgeVSize < 0) edgeVSize = h * Math.max(0,Math.min(0.4f, callback.getEdgeSizeVRatio()));
-        rectFEdge.left = edgeHSize;
-        rectFEdge.top = edgeVSize;
-        rectFEdge.right = getWidth() - edgeHSize;
-        rectFEdge.bottom = getHeight() - edgeVSize;
+        if (edgeHSize < 0)
+            edgeHSize = w * Math.max(0, Math.min(0.4f, callback.getEdgeSizeHRatio()));
+        if (edgeVSize < 0)
+            edgeVSize = h * Math.max(0, Math.min(0.4f, callback.getEdgeSizeVRatio()));
+
+        rectFEdgeLeft.left = 0;
+        rectFEdgeLeft.top = 0;
+        rectFEdgeLeft.right = edgeHSize;
+        rectFEdgeLeft.bottom = getHeight();
+
+        rectFEdgeTop.left = 0;
+        rectFEdgeTop.top = 0;
+        rectFEdgeTop.right = getWidth();
+        rectFEdgeTop.bottom = edgeVSize;
+
+        rectFEdgeRight.left = getWidth() - edgeHSize;
+        rectFEdgeRight.top = 0;
+        rectFEdgeRight.right = getWidth();
+        rectFEdgeRight.bottom = getHeight();
+
+        rectFEdgeBottom.left = 0;
+        rectFEdgeBottom.top = getHeight() - edgeVSize;
+        rectFEdgeBottom.right = getWidth();
+        rectFEdgeBottom.bottom = getHeight();
     }
 
     @Override
@@ -212,7 +243,7 @@ public class SwipeBackLayout extends FrameLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        Log.e("dispatchTouchEvent",activity.getClass().getName());
+        Log.e("dispatchTouchEvent", activity.getClass().getName());
         if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
         }
@@ -425,32 +456,30 @@ public class SwipeBackLayout extends FrameLayout {
 
     public static abstract class Callback {
         //由于状态栏和导航栏，故而垂直方向有效触摸范围要设大点
+
         /**
-         *
-         * @return [0,0.4]
+         * @return [0, 0.4]
          */
         public float getEdgeSizeVRatio() {
             return 0.1f;
         }
 
         /**
-         *
-         * @return [0,0.4]
+         * @return [0, 0.4]
          */
         public float getEdgeSizeHRatio() {
             return 0.08f;
         }
+
         /**
-         *
-         * @return [0,0.4]
+         * @return [0, 0.4]
          */
         public float getThresholdVRatio() {
             return 0.2f;
         }
 
         /**
-         *
-         * @return [0,0.4]
+         * @return [0, 0.4]
          */
         public float getThresholdHRatio() {
             return 0.2f;
@@ -463,10 +492,12 @@ public class SwipeBackLayout extends FrameLayout {
         public float getRadiusShadow(Context context) {
             return ScreenUtils.dpAdapt(context, 10);
         }
-        public int getShadowColor(){
+
+        public int getShadowColor() {
             return Color.BLACK;
         }
-        public BlurMaskFilter.Blur getShadowBlur(){
+
+        public BlurMaskFilter.Blur getShadowBlur() {
             return BlurMaskFilter.Blur.NORMAL;
         }
 
