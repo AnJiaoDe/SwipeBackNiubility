@@ -243,13 +243,13 @@ public class SwipeBackLayout extends FrameLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        Log.e("dispatchTouchEvent", activity.getClass().getName());
         if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
         }
         velocityTracker.addMovement(event);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
+                checkTouchSloped=false;
                 translate_x = 0;
                 translate_y = 0;
                 dragState = STATE_IDLE;
@@ -265,6 +265,7 @@ public class SwipeBackLayout extends FrameLayout {
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
+                checkTouchSloped=false;
                 velocityTracker.computeCurrentVelocity(1000, maxVelocity);
                 final float xvel = clampMag(velocityTracker.getXVelocity(), minVelocity, maxVelocity);
                 final float yvel = clampMag(velocityTracker.getYVelocity(), minVelocity, maxVelocity);
