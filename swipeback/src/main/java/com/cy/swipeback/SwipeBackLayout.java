@@ -120,10 +120,18 @@ public class SwipeBackLayout extends FrameLayout {
             //注意：多指触摸缩放的时候，这里也会回调,e1是down ,e2是move
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                if ( !rectFEdgeLeft.contains(e1.getX(), e1.getY())
+//                if ( !rectFEdgeLeft.contains(e1.getX(), e1.getY())
+//                        && !rectFEdgeRight.contains(e1.getX(), e1.getY())
+//                       && !rectFEdgeTop.contains(e1.getX(), e1.getY())
+//                        && !rectFEdgeBottom.contains(e1.getX(), e1.getY()))
+//                    return false;
+                if (dragState == STATE_IDLE
+                        && (Math.abs(distanceX) >= Math.abs(distanceY)
+                        && !rectFEdgeLeft.contains(e1.getX(), e1.getY())
                         && !rectFEdgeRight.contains(e1.getX(), e1.getY())
-                       && !rectFEdgeTop.contains(e1.getX(), e1.getY())
-                        && !rectFEdgeBottom.contains(e1.getX(), e1.getY()))
+                        || Math.abs(distanceX) < Math.abs(distanceY)
+                        && !rectFEdgeTop.contains(e1.getX(), e1.getY())
+                        && !rectFEdgeBottom.contains(e1.getX(), e1.getY())))
                     return false;
 
                 checkTouchSloped = checkTouchSlop(distanceX, distanceY);
@@ -247,7 +255,7 @@ public class SwipeBackLayout extends FrameLayout {
         velocityTracker.addMovement(event);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                checkTouchSloped=false;
+                checkTouchSloped = false;
                 translate_x = 0;
                 translate_y = 0;
                 dragState = STATE_IDLE;
@@ -263,7 +271,7 @@ public class SwipeBackLayout extends FrameLayout {
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
-                checkTouchSloped=false;
+                checkTouchSloped = false;
                 velocityTracker.computeCurrentVelocity(1000, maxVelocity);
                 final float xvel = clampMag(velocityTracker.getXVelocity(), minVelocity, maxVelocity);
                 final float yvel = clampMag(velocityTracker.getYVelocity(), minVelocity, maxVelocity);
