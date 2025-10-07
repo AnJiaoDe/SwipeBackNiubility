@@ -4,7 +4,7 @@ import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-public class SwipeBack2Activity extends BaseActivity {
+public class SwipeBack2Activity extends BaseSwipeBackActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
